@@ -1,0 +1,50 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Flutter debug build diagnosis",
+			"type": "shell",
+			"command": "flutter build apk --debug",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Flutter debug build verification",
+			"type": "shell",
+			"command": "flutter build apk --debug",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Flutter build diagnose latest",
+			"type": "shell",
+			"command": "flutter build apk --debug",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Publish ShopNest to GitHub",
+			"type": "shell",
+			"command": "git add .; git commit -m \"feat: publish ShopNest Flutter ecommerce app\"; git branch -M main; git remote remove origin 2>$null; git remote add origin https://github.com/haroon048/shopnest.git; git push -u origin main",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Initialize and push ShopNest",
+			"type": "shell",
+			"command": "git init; git add .; git commit -m \"feat: publish ShopNest Flutter ecommerce app\"; git branch -M main; git remote add origin https://github.com/haroon048/shopnest.git; git pull origin main --allow-unrelated-histories --no-edit; if ($LASTEXITCODE -ne 0) { git checkout --ours README.md; git add README.md; git commit -m \"docs: keep professional project README\" }; git push -u origin main",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Push complete ShopNest project",
+			"type": "shell",
+			"command": "git add .; git commit -m publish-shopnest; git branch -M main; git push -u origin main --force",
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}

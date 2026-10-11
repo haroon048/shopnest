@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "223351136809",
+    "firebase_url": "https://testing-cli-38285-default-rtdb.firebaseio.com",
+    "project_id": "testing-cli-38285",
+    "storage_bucket": "testing-cli-38285.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:223351136809:android:cdd9cb2699e8960710f238",
+        "android_client_info": {
+          "package_name": "com.example.asiftaj_firebase_tutorials"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCHOYzwhTn7Rg8sFmqK7mr4lD4FgkpBAE4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:223351136809:android:aa28c9f08988c83b10f238",
+        "android_client_info": {
+          "package_name": "com.example.shopnest"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCHOYzwhTn7Rg8sFmqK7mr4lD4FgkpBAE4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
