@@ -1,321 +1,175 @@
-# 🛍️ ShopNest — Flutter E-Commerce App
+# ShopNest
+
+<p align="center"><strong>Shop smart. Live better.</strong><br>A modern Flutter e-commerce application powered by Firebase.</p>
 
 <p align="center">
-  <strong>Shop smart. Live better.</strong><br>
-  A modern Flutter shopping experience powered by Firebase.
+  <a href="https://github.com/haroon048/shopnest/stargazers"><img src="https://img.shields.io/github/stars/haroon048/shopnest?style=flat-square&color=gold" alt="GitHub stars"></a>
+  <a href="https://github.com/haroon048/shopnest/commits/main"><img src="https://img.shields.io/github/last-commit/haroon048/shopnest?style=flat-square" alt="Last commit"></a>
+  <a href="https://github.com/haroon048/shopnest"><img src="https://img.shields.io/github/repo-size/haroon048/shopnest?style=flat-square" alt="Repository size"></a>
+  <img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20Web%20%7C%20Desktop-546E7A?style=flat-square" alt="Platforms">
 </p>
+
+## App preview
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter">
-  <img src="https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart">
-  <img src="https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Firebase">
-  <img src="https://img.shields.io/badge/Provider-State%20Management-7952B3?style=for-the-badge" alt="Provider">
+  <img src="assets/images/onboarding/onboarding_1.png" width="30%" alt="ShopNest onboarding preview">
+  <img src="assets/images/banners/banner_1.jpg" width="30%" alt="ShopNest home banner preview">
+  <img src="assets/images/placeholders/empty_cart.png" width="30%" alt="ShopNest cart preview">
 </p>
 
-<p align="center">
-  <a href="https://github.com/haroon048/shopnest">View Repository</a> •
-  <a href="https://github.com/haroon048/shopnest/issues">Report an Issue</a>
-</p>
+<p align="center"><em>Real project assets from the ShopNest Flutter app. The gallery is kept inside the repository so it remains available offline and renders directly on GitHub.</em></p>
 
----
+## Contents
 
-## 📌 Overview
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Motion and interaction](#motion-and-interaction)
+- [Tech stack](#tech-stack)
+- [Requirements](#requirements)
+- [Getting started](#getting-started)
+- [Firestore data model](#firestore-data-model)
+- [Quality checks](#quality-checks)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
 
-**ShopNest** is a Flutter-based e-commerce application designed to provide a smooth, modern, and user-friendly online shopping experience.
+## Overview
 
-Built with Flutter, Dart, Firebase Authentication, Cloud Firestore, and Provider, the application focuses on secure authentication, product discovery, interactive shopping cart management, and synchronized user data.
+ShopNest is a production-style shopping app built with Flutter. It provides authentication, product discovery, categories, cart management, promotions, and Firebase-backed data synchronization.
 
-The project combines modern UI design with practical mobile app development concepts, making it suitable for learning, development practice, and a developer portfolio.
+## Features
 
-## 📸 Application Screenshots
+- Onboarding with persistent first-launch state
+- Email/password and Google authentication through Firebase Auth
+- Product browsing with categories, banners, search, and product details
+- Cached network images and shimmer loading states
+- Cloud Firestore product and cart data
+- Real-time cart synchronization per authenticated user
+- Quantity updates, remove/clear cart, subtotal, delivery fee, and order total
+- Promo codes: `WELCOME10` and `SAVE20`
+- Firebase Cloud Messaging integration ready for notifications
 
-Explore the ShopNest interface, from onboarding and authentication to product browsing and shopping cart management.
+## Architecture
 
-> Add your actual app screenshots to the `screenshots/` folder using the filenames shown below. GitHub will display them automatically once the images are committed.
-
-### 🏠 Onboarding & Home
-
-<p align="center">
-  <img src="screenshots/onboarding.png" width="30%" alt="ShopNest onboarding screen">
-  &nbsp;
-  <img src="screenshots/home.png" width="30%" alt="ShopNest home screen">
-  &nbsp;
-  <img src="screenshots/categories.png" width="30%" alt="ShopNest categories screen">
-</p>
-
-### 🛍️ Product Discovery
-
-<p align="center">
-  <img src="screenshots/products.png" width="30%" alt="Product listing">
-  &nbsp;
-  <img src="screenshots/product_details.png" width="30%" alt="Product details">
-  &nbsp;
-  <img src="screenshots/search.png" width="30%" alt="Product search">
-</p>
-
-### 🛒 Shopping Cart & Authentication
-
-<p align="center">
-  <img src="screenshots/cart.png" width="30%" alt="Shopping cart">
-  &nbsp;
-  <img src="screenshots/login.png" width="30%" alt="Login screen">
-  &nbsp;
-  <img src="screenshots/signup.png" width="30%" alt="Registration screen">
-</p>
-
-## ✨ Key Features
-
-* **User Authentication:** Email/password authentication and Google Sign-In integration.
-* **First-Launch Onboarding:** Introduces users to the application with persistent onboarding state.
-* **Product Discovery:** Browse products, explore categories, view promotional banners, and search for products.
-* **Product Details:** View product information and images.
-* **Shopping Cart:** Add items, update quantities, remove individual products, and clear the cart.
-* **Real-Time Synchronization:** Keep authenticated users' cart data synchronized through Cloud Firestore.
-* **Order Summary:** Calculate subtotal, delivery fees, discounts, and the final estimated total.
-* **Promo Codes:** Support for `WELCOME10` and `SAVE20`, according to the application's implemented validation rules.
-* **Loading Experience:** Shimmer effects and cached network images for a smoother browsing experience.
-* **Modern UI:** Animations, carousels, Lottie assets, and reusable Flutter components.
-* **Push Notifications:** Firebase Cloud Messaging integration, subject to platform configuration and implementation.
-
-## 🧰 Technology Stack
-
-| Category              | Technology                    |
-| --------------------- | ----------------------------- |
-| Framework             | Flutter                       |
-| Programming Language  | Dart                          |
-| UI                    | Material Design               |
-| State Management      | Provider                      |
-| Authentication        | Firebase Authentication       |
-| Database              | Cloud Firestore               |
-| Google Authentication | Google Sign-In                |
-| Notifications         | Firebase Cloud Messaging      |
-| Cloud Storage         | Firebase Storage              |
-| Networking            | HTTP                          |
-| Local Persistence     | SharedPreferences             |
-| Image Loading         | Cached Network Image          |
-| Image Selection       | Image Picker                  |
-| Loading Effects       | Shimmer                       |
-| Animations            | Lottie and Flutter animations |
-| Development Tools     | VS Code, Android Studio, Git  |
-
-## 🏗️ Project Architecture
-
-The application uses Flutter's widget-based architecture and Provider for state management. Organize the project into reusable components and separate responsibilities as appropriate for the existing codebase.
-
-A suggested structure for future development:
+ShopNest follows a feature-first Flutter architecture designed to keep UI, state, services, and domain models easy to evolve:
 
 ```text
-shopnest/
-├── android/
-├── ios/
-├── assets/
-│   ├── images/
-│   ├── icons/
-│   └── animations/
-├── lib/
-│   ├── main.dart
-│   ├── models/
-│   ├── providers/
-│   ├── services/
-│   ├── repositories/
-│   ├── screens/
-│   ├── widgets/
-│   ├── utils/
-│   └── firebase_options.dart
-├── screenshots/
-├── test/
-├── pubspec.yaml
-└── README.md
+lib/
+├── app.dart                    # App shell and global configuration
+├── main.dart                   # Entry point and service bootstrap
+├── core/
+│   ├── routes/                 # Centralized navigation routes
+│   ├── services/               # Notifications and Cloudinary services
+│   ├── theme/                  # Colors, typography, and app theme
+│   ├── utils/                  # Validators, constants, helpers
+│   └── widgets/                # Reusable design-system widgets
+├── features/
+│   ├── auth/                   # Login, signup, roles, password recovery
+│   ├── home/                   # Home feed and discovery
+│   ├── product/                # Product details and product state
+│   ├── cart/                   # Real-time cart and pricing logic
+│   ├── checkout/               # Checkout and order success flow
+│   ├── orders/                 # Customer order history and details
+│   ├── wishlist/               # Saved products
+│   ├── chat/                   # Customer support chat
+│   └── admin/                  # Dashboard, products, orders, categories
+└── models/                     # Typed Firestore/domain models
 ```
 
-*Note: This is a suggested structure. Keep the documentation aligned with the folders and files that actually exist in your repository.*
+### Data flow
 
-## ⚙️ Prerequisites
-
-Before running ShopNest, install and configure:
-
-* Flutter SDK 3.4.0 or a compatible newer version.
-* Dart SDK compatible with the project's Flutter version.
-* Android Studio or Xcode for the target platform.
-* VS Code or another preferred code editor.
-* A configured Firebase project.
-* FlutterFire CLI.
-
-Check your Flutter installation:
-
-```bash
-flutter doctor
+```text
+Flutter UI → Provider state → Firebase services → Firestore / Storage
+     ↑              │                    │
+     └──── reactive updates ────────────┘
 ```
 
-## 🚀 Getting Started
+## Motion and interaction
 
-### 1. Clone the Repository
+The UI is designed to feel responsive and modern without distracting from shopping:
+
+- `flutter_animate` for entrance, fade, scale, and slide effects
+- `shimmer` for smooth loading placeholders
+- `carousel_slider` for interactive promotional banners
+- `smooth_page_indicator` for onboarding progress feedback
+- `lottie` for expressive success and empty-state illustrations
+- `AnimatedNavIcon` and reusable widgets for consistent micro-interactions
+- Provider-driven updates so cart badges and totals react immediately to Firestore changes
+
+The existing animation assets live in `assets/animations/`, while reusable motion components are organized under `lib/core/widgets/`.
+
+## Tech stack
+
+| Area | Technology |
+| --- | --- |
+| UI | Flutter, Material Design |
+| Language | Dart |
+| State management | Provider |
+| Authentication | Firebase Authentication, Google Sign-In |
+| Database | Cloud Firestore |
+| Notifications | Firebase Cloud Messaging |
+| Storage | Firebase Storage |
+| Networking | HTTP |
+| Local persistence | SharedPreferences |
+| Media | Image Picker, Cached Network Image |
+| UI polish | Shimmer, Lottie, animations, carousels |
+
+## Requirements
+
+- Flutter SDK 3.4.0 or newer
+- Dart SDK 3.4.0 or newer
+- Android Studio or Xcode for mobile builds
+- A Firebase project configured for the target platforms
+
+## Getting started
 
 ```bash
 git clone https://github.com/haroon048/shopnest.git
 cd shopnest
-```
-
-### 2. Install Dependencies
-
-```bash
 flutter pub get
-```
-
-### 3. Configure Firebase
-
-Install the FlutterFire CLI if it is not already installed:
-
-```bash
-dart pub global activate flutterfire_cli
-```
-
-Sign in to Firebase CLI if required, then configure the application:
-
-```bash
 flutterfire configure
-```
-
-Select your Firebase project and the platforms you intend to support.
-
-### 4. Enable Firebase Services
-
-In the Firebase Console, configure the services your application uses:
-
-* **Authentication:** Enable Email/Password and Google sign-in providers.
-* **Cloud Firestore:** Create a database and configure secure access rules.
-* **Cloud Storage:** Enable storage if the app uploads or retrieves files through Firebase Storage.
-* **Cloud Messaging:** Configure the required platform settings if push notifications are implemented.
-
-Complete any required Google Sign-In configuration, including Android SHA fingerprints and platform-specific settings.
-
-### 5. Run the Application
-
-Connect an Android device or start a supported emulator:
-
-```bash
 flutter run
 ```
 
-To run the web version, if web support and Firebase web configuration are available:
+Enable Email/Password and Google Authentication, Cloud Firestore, Firebase Storage, and Cloud Messaging. Never commit private credentials or production secrets.
 
-```bash
-flutter run -d chrome
-```
+## Firestore data model
 
-## 🔥 Firestore Data Model
+The cart provider stores each user's cart at `users/{uid}/cart/{productId}`. Each cart document contains the product identifier, name, price, image URL, and quantity. Configure Firestore security rules so users can only access their own cart.
 
-ShopNest stores each authenticated user's cart under their own user document:
-
-```text
-users/
-└── {uid}/
-    └── cart/
-        ├── {productId}/
-        └── {productId}/
-```
-
-A cart document can contain fields such as:
-
-```json
-{
-  "productId": "product_001",
-  "name": "Sample Product",
-  "price": 1200.0,
-  "imageUrl": "https://example.com/product.png",
-  "quantity": 2
-}
-```
-
-The example represents the intended data model; actual field names and types should match the implementation in your project.
-
-### 🔐 Security Considerations
-
-* Authenticate users before allowing access to their personal cart.
-* Enforce user ownership through Firestore Security Rules.
-* Do not use unrestricted test-mode rules in production.
-* Validate prices and discounts on a trusted backend before accepting real payments.
-* Never commit private service-account credentials, API secrets, or sensitive configuration files.
-
-## 🧪 Code Quality & Testing
-
-Format the Dart code:
+## Quality checks
 
 ```bash
 dart format lib test
-```
-
-Analyze the project:
-
-```bash
 flutter analyze
-```
-
-Run automated tests:
-
-```bash
 flutter test
 ```
 
-Resolve any reported issues before preparing a release.
+## Roadmap
 
-## 📦 Build a Release APK
+- Checkout and payment gateway integration
+- Order history and tracking
+- Wishlist and product reviews
+- Admin product management dashboard
+- Automated CI builds and release distribution
 
-To generate an Android APK:
+## Contributing
 
-```bash
-flutter build apk --release
-```
+Contributions are welcome. Create a focused feature branch, run the quality checks, and open a pull request with a clear description.
 
-The APK is normally generated at:
+## License
 
-```text
-build/app/outputs/flutter-apk/app-release.apk
-```
+This project is intended for learning and portfolio use. Add a `LICENSE` file with the terms you want to apply before distributing it publicly.
 
-For Google Play distribution, build an Android App Bundle:
+## Author
 
-```bash
-flutter build appbundle --release
-```
+Built by [Haroon](https://github.com/haroon048).
 
-Ensure that release signing and Firebase configuration are properly set up before publishing.
 
-## 🗺️ Future Enhancements
 
-* Checkout and payment gateway integration.
-* Order placement, order history, and order tracking.
-* Wishlist and product reviews.
-* Admin dashboard for product and category management.
-* Improved filtering, sorting, and personalized recommendations.
-* Expanded notification workflows.
-* Automated testing and continuous integration.
-* Production deployment and release distribution.
 
-*These are planned improvements, not claims that every feature is currently implemented.*
 
-## 🤝 Contributing
 
-Contributions and suggestions are welcome.
-
-1. Fork the repository.
-2. Create a feature branch.
-3. Implement your changes.
-4. Run formatting, analysis, and tests.
-5. Open a pull request with a clear description.
-
-## 📄 License
-
-This project is intended for learning and portfolio use. Add a `LICENSE` file to the repository before specifying redistribution or usage terms.
-
-## 👨‍💻 Author
-
-**Haroon — Flutter Developer**
-
-* GitHub: [@haroon048](https://github.com/haroon048)
-
----
-
-<p align="center">
-  <strong>ShopNest — Shop smart. Live better. 🛍️</strong>
-</p>
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.
