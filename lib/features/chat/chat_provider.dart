@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
 import '../../models/chat_message.dart'; // ChatThread + ChatMessage yahan se
+import '../../core/services/notification_service.dart';
 
 // Upar se girne wale banner ka event
 class ChatNotificationEvent {
@@ -46,6 +47,7 @@ class ChatProvider extends ChangeNotifier {
   // ---------- Chat list ----------
   // NOTE: sirf arrayContains — isme composite index NAHI chahiye.
   // Sorting (naye pehle) Dart me hoti hai, Firestore me orderBy nahi.
+  // Apne liye delete ki hui chats nahi dikhengi.
   Stream<List<ChatThread>> chatsStream() {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return const Stream.empty();
@@ -54,8 +56,9 @@ class ChatProvider extends ChangeNotifier {
         .where('participants', arrayContains: uid)
         .snapshots()
         .map((s) {
-      final list =
-          s.docs.map((d) => ChatThread.fromMap(d.data(), d.id)).toList();
+      var list = s.docs.map((d) => ChatThread.fromMap(d.data(), d.id)).toList();
+      // Apne liye delete ki hui chats chhupao
+      list = list.where((t) => !t.deletedFor.contains(uid)).toList();
       // Null-safe sorting: jiska time nahi, wo sab se neeche
       list.sort((a, b) {
         final at = a.lastMessageAt ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -91,25 +94,45 @@ class ChatProvider extends ChangeNotifier {
     return _db.collection('chats').doc(chatId).snapshots();
   }
 
+  // ---------- Ek thread ek dafa parho (buyer/product maloom karne ke liye) ----------
+  Future<ChatThread?> getThread(String chatId) async {
+    final d = await _db.collection('chats').doc(chatId).get();
+    if (!d.exists || d.data() == null) return null;
+    return ChatThread.fromMap(d.data()!, d.id);
+  }
+
+  // ---------- Kaun typing kar raha hai (uid, khaali = koi nahi) ----------
+  Stream<String> typingStream(String chatId) {
+    return _db
+        .collection('chats')
+        .doc(chatId)
+        .snapshots()
+        .map((d) => d.data()?['typingBy'] as String? ?? '');
+  }
+
   // ---------- Ek chat ke messages (naye sab se upar) ----------
+  // Apne liye delete kiye hue messages nahi dikhenge.
   Stream<List<ChatMessage>> messagesStream(String chatId) {
+    final uid = _auth.currentUser?.uid ?? '';
     return _db
         .collection('chats')
         .doc(chatId)
         .collection('messages')
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((s) =>
-            s.docs.map((d) => ChatMessage.fromMap(d.data(), d.id)).toList());
+        .map((s) => s.docs
+            .map((d) => ChatMessage.fromMap(d.data(), d.id))
+            .where((m) => !m.deletedFor.contains(uid))
+            .toList());
   }
 
   // ---------- Chat dhundo, na mile to nayi banao ----------
-  // storeId: chat kis store ki hai (product detail se product.storeId bhejo).
   Future<String> getOrCreateChat({
     required String productId,
     required String productName,
     required String productImage,
     required String sellerId,
+    // storeId: chat kis store ki hai (product detail se product.storeId bhejo).
     String storeId = '',
   }) async {
     final user = _auth.currentUser!;
@@ -133,34 +156,48 @@ class ChatProvider extends ChangeNotifier {
       'customerId': uid,
       'customerName': name,
       'sellerId': sellerId,
-      'storeId': storeId, // chat kis store ki hai
       'productId': productId,
       'productName': productName,
       'productImage': productImage,
+      'storeId': storeId, // chat kis store ki hai
       'lastMessage': '',
       'lastSenderId': '',
       'lastSenderName': '',
       'lastMessageAt': FieldValue.serverTimestamp(),
+      'lastMessageStatus': 'sent',
+      'typingBy': '',
+      'deletedFor': [],
       'unreadCounts': {uid: 0, sellerId: 0},
     });
     return ref.id;
   }
 
-  // ---------- Message bhejo (text ya photo) ----------
+  // ---------- Message bhejo (text ya photo, reply ke saath) ----------
   // Kamyabi par null, nakami par error ka text wapas
   Future<String?> sendMessage({
     required String chatId,
     String? text,
     XFile? imageFile,
+    ChatMessage? replyTo,
   }) async {
     try {
       if (imageFile != null) {
         final url = await _uploadToCloudinary(File(imageFile.path));
         await _sendMessage(
-            chatId: chatId, text: '', imageUrl: url, type: 'image');
+          chatId: chatId,
+          text: '',
+          imageUrl: url,
+          type: 'image',
+          replyTo: replyTo,
+        );
       } else {
         await _sendMessage(
-            chatId: chatId, text: text ?? '', imageUrl: '', type: 'text');
+          chatId: chatId,
+          text: text ?? '',
+          imageUrl: '',
+          type: 'text',
+          replyTo: replyTo,
+        );
       }
       return null;
     } catch (e) {
@@ -173,6 +210,7 @@ class ChatProvider extends ChangeNotifier {
     required String text,
     required String imageUrl,
     required String type,
+    ChatMessage? replyTo,
   }) async {
     final user = _auth.currentUser!;
     final uid = user.uid;
@@ -197,6 +235,13 @@ class ChatProvider extends ChangeNotifier {
       'text': text,
       'imageUrl': imageUrl,
       'type': type,
+      'status': 'sent',
+      'deletedFor': [],
+      'deletedForEveryone': false,
+      'replyToId': replyTo?.id ?? '',
+      'replyToText':
+          replyTo != null ? (replyTo.isImage ? 'Photo' : replyTo.text) : '',
+      'replyToName': replyTo?.senderName ?? '',
       'createdAt': FieldValue.serverTimestamp(),
     });
     final updates = <String, dynamic>{
@@ -204,17 +249,139 @@ class ChatProvider extends ChangeNotifier {
       'lastSenderId': uid,
       'lastSenderName': name,
       'lastMessageAt': FieldValue.serverTimestamp(),
+      'lastMessageStatus': 'sent',
     };
     if (other.isNotEmpty) {
       updates['unreadCounts.$other'] = FieldValue.increment(1);
     }
     batch.update(chatRef, updates);
     await batch.commit();
+
+    // Saamne wale ke liye notification doc (bell + center ke liye).
+    // FCM push Cloud Function bhejta hai — ye doc sirf in-app list ke liye hai.
+    if (other.isNotEmpty) {
+      await NotificationService.createNotification(
+        userId: other,
+        title: name,
+        body: type == 'image' ? 'Sent a photo' : text,
+        type: 'chat',
+        refId: chatId,
+      );
+    }
+  }
+
+  // ---------- Chat kholne par: messages "delivered" se "seen" ----------
+  // + unread zero + thread status seen.
+  Future<void> markAsSeen(String chatId, String uid) async {
+    await markAsRead(chatId, uid);
+    final snap = await _db
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .orderBy('createdAt', descending: true)
+        .limit(50)
+        .get();
+    final batch = _db.batch();
+    var changed = false;
+    for (final d in snap.docs) {
+      final m = d.data();
+      if (m['senderId'] != uid && m['status'] != 'seen') {
+        batch.update(d.reference, {'status': 'seen'});
+        changed = true;
+      }
+    }
+    if (changed) {
+      batch.update(
+        _db.collection('chats').doc(chatId),
+        {'lastMessageStatus': 'seen'},
+      );
+      await batch.commit();
+    }
+  }
+
+  // ---------- Chat list kholne par: saare threads "delivered" ----------
+  // (Sirf thread ka status — message docs detail screen me seen hote hain.)
+  Future<void> markAllDelivered(String uid) async {
+    final snap = await _db
+        .collection('chats')
+        .where('participants', arrayContains: uid)
+        .get();
+    final batch = _db.batch();
+    var changed = false;
+    for (final d in snap.docs) {
+      final data = d.data();
+      if (data['lastSenderId'] != uid && data['lastMessageStatus'] == 'sent') {
+        batch.update(d.reference, {'lastMessageStatus': 'delivered'});
+        changed = true;
+      }
+    }
+    if (changed) await batch.commit();
   }
 
   // ---------- Chat kholne par unread zero ----------
   Future<void> markAsRead(String chatId, String uid) async {
     await _db.collection('chats').doc(chatId).update({'unreadCounts.$uid': 0});
+  }
+
+  // ---------- Typing indicator ----------
+  Future<void> setTyping(String chatId, bool isTyping) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    await _db.collection('chats').doc(chatId).update({
+      'typingBy': isTyping ? uid : '',
+    });
+  }
+
+  // ---------- Ek message apne liye delete karo ----------
+  Future<void> deleteMessageForMe(String chatId, String messageId) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    await _db
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .doc(messageId)
+        .update({
+      'deletedFor': FieldValue.arrayUnion([uid]),
+    });
+  }
+
+  // ---------- Ek message sab ke liye delete karo (sirf apna message) ----------
+  Future<void> deleteMessageForEveryone(String chatId, String messageId) async {
+    await _db
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .doc(messageId)
+        .update({
+      'deletedForEveryone': true,
+      'text': '',
+      'imageUrl': '',
+    });
+  }
+
+  // ---------- Poori chat apne liye saaf karo ----------
+  Future<void> clearChat(String chatId) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    final snap =
+        await _db.collection('chats').doc(chatId).collection('messages').get();
+    final batch = _db.batch();
+    for (final d in snap.docs) {
+      batch.update(d.reference, {
+        'deletedFor': FieldValue.arrayUnion([uid]),
+      });
+    }
+    await batch.commit();
+  }
+
+  // ---------- Chat apni list se delete karo (doosre ko rehti hai) ----------
+  Future<void> deleteChatForMe(String chatId) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    await _db.collection('chats').doc(chatId).update({
+      'deletedFor': FieldValue.arrayUnion([uid]),
+    });
   }
 
   // ---------- Cloudinary par tasveer ----------

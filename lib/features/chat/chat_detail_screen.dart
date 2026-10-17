@@ -1,17 +1,21 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/routes/app_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/chat_message.dart';
 import 'chat_provider.dart';
 
-/// Customer ki taraf se conversation — premium bubbles,
-/// date dividers, photo messages, live reply.
+/// E-commerce chat — product context, ticks, reply, delete,
+/// typing indicator, quick replies. Daraz/Amazon style.
 class ChatDetailScreen extends StatefulWidget {
   final String chatId;
   const ChatDetailScreen({super.key, required this.chatId});
@@ -25,6 +29,24 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   bool _sending = false;
   late final ChatProvider _provider;
 
+  // Reply: jis message ka jawab de rahe hain
+  ChatMessage? _replyingTo;
+  // Main buyer hun ya seller (quick replies sirf buyer ko)
+  bool _isBuyer = false;
+  String _productId = '';
+  // Saamne wala typing kar raha hai?
+  bool _otherTyping = false;
+  StreamSubscription<String>? _typingSub;
+  Timer? _typingTimer;
+
+  // E-commerce quick replies (buyer ke liye)
+  static const _quickReplies = [
+    'Is this available?',
+    'What is the delivery time?',
+    'Is there any discount?',
+    'Is this original?',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -33,28 +55,81 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     _provider.openChatId = widget.chatId;
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
-      _provider.markAsRead(widget.chatId, uid);
+      _provider.markAsSeen(widget.chatId, uid);
     }
+    // Buyer/product maloom karo + typing suno
+    _provider.getThread(widget.chatId).then((t) {
+      if (mounted && t != null) {
+        setState(() {
+          _isBuyer = t.buyerId == uid;
+          _productId = t.productId;
+        });
+      }
+    });
+    _typingSub = _provider.typingStream(widget.chatId).listen((typingBy) {
+      final typing = typingBy.isNotEmpty && typingBy != uid;
+      if (mounted && typing != _otherTyping) {
+        setState(() => _otherTyping = typing);
+      }
+    });
   }
 
   @override
   void dispose() {
     _provider.openChatId = null;
+    _provider.setTyping(widget.chatId, false);
+    _typingSub?.cancel();
+    _typingTimer?.cancel();
     _msgCtrl.dispose();
     super.dispose();
+  }
+
+  // Text likhte waqt typing bhejo, 2 sec rukne par band
+  void _onTextChanged(String text) {
+    if (text.isEmpty) {
+      _provider.setTyping(widget.chatId, false);
+      _typingTimer?.cancel();
+      return;
+    }
+    _provider.setTyping(widget.chatId, true);
+    _typingTimer?.cancel();
+    _typingTimer = Timer(const Duration(seconds: 2), () {
+      _provider.setTyping(widget.chatId, false);
+    });
   }
 
   Future<void> _send() async {
     final text = _msgCtrl.text.trim();
     if (text.isEmpty || _sending) return;
     setState(() => _sending = true);
+    final reply = _replyingTo;
+    final error = await _provider.sendMessage(
+      chatId: widget.chatId,
+      text: text,
+      replyTo: reply,
+    );
+    _provider.setTyping(widget.chatId, false);
+    if (!mounted) return;
+    setState(() {
+      _sending = false;
+      _replyingTo = null;
+    });
+    if (error == null) {
+      _msgCtrl.clear();
+    } else {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
+    }
+  }
+
+  Future<void> _sendQuickReply(String text) async {
+    if (_sending) return;
+    setState(() => _sending = true);
     final error =
         await _provider.sendMessage(chatId: widget.chatId, text: text);
     if (!mounted) return;
     setState(() => _sending = false);
-    if (error == null) {
-      _msgCtrl.clear();
-    } else {
+    if (error != null) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(error)));
     }
@@ -68,13 +143,137 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
     if (picked == null) return;
     setState(() => _sending = true);
-    final error =
-        await _provider.sendMessage(chatId: widget.chatId, imageFile: picked);
+    final reply = _replyingTo;
+    final error = await _provider.sendMessage(
+      chatId: widget.chatId,
+      imageFile: picked,
+      replyTo: reply,
+    );
+    _provider.setTyping(widget.chatId, false);
     if (!mounted) return;
-    setState(() => _sending = false);
+    setState(() {
+      _sending = false;
+      _replyingTo = null;
+    });
     if (error != null) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(error)));
+    }
+  }
+
+  // ---------- Long-press menu ----------
+  void _showMessageMenu(ChatMessage m, bool mine) {
+    if (m.deletedForEveryone) return; // delete hua message — menu nahi
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _menuItem(
+              icon: Icons.reply_outlined,
+              label: 'Reply',
+              onTap: () {
+                Navigator.pop(ctx);
+                setState(() => _replyingTo = m);
+              },
+            ),
+            _menuItem(
+              icon: Icons.copy_outlined,
+              label: 'Copy',
+              onTap: () {
+                Navigator.pop(ctx);
+                Clipboard.setData(
+                    ClipboardData(text: m.isImage ? m.imageUrl : m.text));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Copied')),
+                );
+              },
+            ),
+            _menuItem(
+              icon: Icons.delete_outline,
+              label: 'Delete for me',
+              onTap: () {
+                Navigator.pop(ctx);
+                _provider.deleteMessageForMe(widget.chatId, m.id);
+              },
+            ),
+            if (mine)
+              _menuItem(
+                icon: Icons.delete_forever_outlined,
+                label: 'Delete for everyone',
+                danger: true,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _provider.deleteMessageForEveryone(widget.chatId, m.id);
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _menuItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool danger = false,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: danger ? Colors.redAccent : Colors.white70),
+      title: Text(label,
+          style: TextStyle(color: danger ? Colors.redAccent : Colors.white)),
+      onTap: onTap,
+    );
+  }
+
+  // ---------- Clear chat (confirm) ----------
+  Future<void> _clearChat() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Clear chat?', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'All messages will be removed for you. The other person will still see them.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child:
+                const Text('Clear', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await _provider.clearChat(widget.chatId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Chat cleared')),
+        );
+      }
     }
   }
 
@@ -149,6 +348,31 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             );
           },
         ),
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            color: AppColors.surface,
+            onSelected: (v) {
+              if (v == 'clear') _clearChat();
+              if (v == 'product' && _productId.isNotEmpty) {
+                Navigator.pushNamed(context, AppRoutes.productDetail,
+                    arguments: _productId);
+              }
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: 'product',
+                child:
+                    Text('View product', style: TextStyle(color: Colors.white)),
+              ),
+              const PopupMenuItem(
+                value: 'clear',
+                child: Text('Clear chat',
+                    style: TextStyle(color: Colors.redAccent)),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -189,6 +413,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                               color: AppColors.primaryViolet));
                     }
                     final msgs = snap.data ?? [];
+                    // Naye messages aaye to seen mark karo
+                    final unseen = msgs
+                        .where((m) => m.senderId != myId && m.status != 'seen');
+                    if (unseen.isNotEmpty && myId != null) {
+                      _provider.markAsSeen(widget.chatId, myId);
+                    }
                     if (msgs.isEmpty) {
                       return Center(
                         child: Column(
@@ -255,6 +485,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   },
                 ),
               ),
+              if (_otherTyping) _typingIndicator(),
+              if (_isBuyer) _quickRepliesRow(),
+              if (_replyingTo != null) _replyPreview(),
               _inputBar(),
             ],
           ),
@@ -287,68 +520,282 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
-  Widget _bubble(ChatMessage m, bool mine, int index) {
-    return Align(
-      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        constraints:
-            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(18),
-            topRight: const Radius.circular(18),
-            bottomLeft: Radius.circular(mine ? 18 : 4),
-            bottomRight: Radius.circular(mine ? 4 : 18),
+  // ---------- Typing indicator ----------
+  Widget _typingIndicator() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 20, bottom: 6),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: Colors.white.withValues(alpha: 0.07),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(3, (i) {
+                return Container(
+                  width: 6,
+                  height: 6,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white70,
+                  ),
+                )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .fadeIn(delay: (i * 200).ms, duration: 400.ms)
+                    .fadeOut(delay: (i * 200 + 400).ms, duration: 400.ms);
+              }),
+            ),
           ),
-          gradient: mine
-              ? const LinearGradient(
-                  colors: [Color(0xFF8B5CF6), Color(0xFFEC4899)])
-              : null,
-          color: mine ? null : Colors.white.withValues(alpha: 0.07),
-          border: mine
-              ? null
-              : Border.all(color: Colors.white.withValues(alpha: 0.1)),
-          boxShadow: mine
-              ? [
-                  BoxShadow(
-                      color: const Color(0xFF8B5CF6).withValues(alpha: 0.3),
-                      blurRadius: 12)
-                ]
-              : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            if (!mine)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(m.senderName,
-                    style: const TextStyle(
-                        color: Color(0xFFEC4899),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600)),
-              ),
-            m.type == 'image' && m.imageUrl.isNotEmpty
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: CachedNetworkImage(
-                      imageUrl: m.imageUrl,
-                      errorWidget: (_, __, ___) =>
-                          const Icon(Icons.broken_image, color: Colors.white54),
-                    ),
-                  )
-                : Text(m.text, style: const TextStyle(color: Colors.white)),
-            const SizedBox(height: 4),
-            Text(_clock(m.createdAt),
-                style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.45), fontSize: 10)),
-          ],
+          const SizedBox(width: 8),
+          const Text('typing...',
+              style: TextStyle(color: Colors.white54, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  // ---------- Quick replies (buyer ke liye) ----------
+  Widget _quickRepliesRow() {
+    return SizedBox(
+      height: 42,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        itemCount: _quickReplies.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (_, i) => GestureDetector(
+          onTap: () => _sendQuickReply(_quickReplies[i]),
+          child: Container(
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: Colors.white.withValues(alpha: 0.06),
+              border: Border.all(
+                  color: AppColors.primaryViolet.withValues(alpha: 0.4)),
+            ),
+            child: Text(
+              _quickReplies[i],
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+            ),
+          ),
         ),
       ),
-    ).animate().fadeIn(duration: 300.ms).slideY(
-        begin: 0.3, end: 0, duration: 300.ms, curve: Curves.easeOutCubic);
+    );
+  }
+
+  // ---------- Reply preview (input ke upar) ----------
+  Widget _replyPreview() {
+    final r = _replyingTo!;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: AppColors.primaryViolet.withValues(alpha: 0.12),
+        border:
+            Border.all(color: AppColors.primaryViolet.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Replying to ${r.senderName}',
+                  style: const TextStyle(
+                    color: AppColors.primaryPink,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  r.isImage ? 'Photo' : r.text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () => setState(() => _replyingTo = null),
+            child: const Icon(Icons.close, color: Colors.white54, size: 18),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _bubble(ChatMessage m, bool mine, int index) {
+    // Delete-for-everyone: sirf placeholder dikhao
+    if (m.deletedForEveryone) {
+      return Align(
+        alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(18),
+              topRight: const Radius.circular(18),
+              bottomLeft: Radius.circular(mine ? 18 : 4),
+              bottomRight: Radius.circular(mine ? 4 : 18),
+            ),
+            color: Colors.white.withValues(alpha: 0.04),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.block_outlined, size: 14, color: Colors.white38),
+              SizedBox(width: 6),
+              Text('This message was deleted',
+                  style: TextStyle(
+                      color: Colors.white38,
+                      fontSize: 13,
+                      fontStyle: FontStyle.italic)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onLongPress: () => _showMessageMenu(m, mine),
+      child: Align(
+        alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.75),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(18),
+              topRight: const Radius.circular(18),
+              bottomLeft: Radius.circular(mine ? 18 : 4),
+              bottomRight: Radius.circular(mine ? 4 : 18),
+            ),
+            gradient: mine
+                ? const LinearGradient(
+                    colors: [Color(0xFF8B5CF6), Color(0xFFEC4899)])
+                : null,
+            color: mine ? null : Colors.white.withValues(alpha: 0.07),
+            border: mine
+                ? null
+                : Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            boxShadow: mine
+                ? [
+                    BoxShadow(
+                        color: const Color(0xFF8B5CF6).withValues(alpha: 0.3),
+                        blurRadius: 12)
+                  ]
+                : null,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (!mine)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(m.senderName,
+                      style: const TextStyle(
+                          color: Color(0xFFEC4899),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600)),
+                ),
+              // Reply quote
+              if (m.hasReply)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.black.withValues(alpha: 0.18),
+                    border: Border(
+                      left: BorderSide(
+                        color: mine
+                            ? Colors.white.withValues(alpha: 0.7)
+                            : AppColors.primaryPink,
+                        width: 3,
+                      ),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(m.replyToName,
+                          style: TextStyle(
+                            color: mine
+                                ? Colors.white.withValues(alpha: 0.9)
+                                : AppColors.primaryPink,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          )),
+                      const SizedBox(height: 1),
+                      Text(m.replyToText,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.75),
+                            fontSize: 12,
+                          )),
+                    ],
+                  ),
+                ),
+              m.type == 'image' && m.imageUrl.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: CachedNetworkImage(
+                        imageUrl: m.imageUrl,
+                        errorWidget: (_, __, ___) => const Icon(
+                            Icons.broken_image,
+                            color: Colors.white54),
+                      ),
+                    )
+                  : Text(m.text, style: const TextStyle(color: Colors.white)),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_clock(m.createdAt),
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.45),
+                          fontSize: 10)),
+                  // Ticks — sirf mere messages par
+                  if (mine) ...[
+                    const SizedBox(width: 4),
+                    _ticks(m.status),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ).animate().fadeIn(duration: 300.ms).slideY(
+          begin: 0.3, end: 0, duration: 300.ms, curve: Curves.easeOutCubic),
+    );
+  }
+
+  // ✓ sent, ✓✓ delivered (grey), ✓✓ seen (pink)
+  Widget _ticks(String status) {
+    if (status == 'seen') {
+      return const Icon(Icons.done_all, size: 14, color: AppColors.primaryPink);
+    }
+    if (status == 'delivered') {
+      return Icon(Icons.done_all,
+          size: 14, color: Colors.white.withValues(alpha: 0.6));
+    }
+    return Icon(Icons.done,
+        size: 14, color: Colors.white.withValues(alpha: 0.6));
   }
 
   Widget _inputBar() {
@@ -389,6 +836,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 ),
                 child: TextField(
                   controller: _msgCtrl,
+                  onChanged: _onTextChanged,
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
                     hintText: 'Type a message...',

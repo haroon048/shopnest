@@ -34,6 +34,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
     final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
     final chat = context.read<ChatProvider>();
     chat.startNotifications(myUid);
+    // Chat list khuli — saamne wale ke messages "delivered" mark karo
+    chat.markAllDelivered(myUid);
     _notifSub = chat.notificationsStream.listen((event) {
       if (!mounted) return;
       setState(() => _banner = event);
@@ -109,7 +111,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                               color: Colors.white.withValues(alpha: 0.06)),
                         ),
                         itemBuilder: (context, i) =>
-                            _row(list[i], unread[list[i].id] ?? 0, i),
+                            _row(list[i], unread[list[i].id] ?? 0, i, myUid),
                       );
                     },
                   );
@@ -190,10 +192,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
         .slideY(begin: 0.3, end: 0, duration: 400.ms);
   }
 
-  // ---------- Chat row ----------
-  Widget _row(ChatThread t, int unread, int index) {
+  // ---------- Chat row (tick + long-press delete) ----------
+  Widget _row(ChatThread t, int unread, int index, String myUid) {
     return GestureDetector(
       onTap: () => _openThread(t.id),
+      onLongPress: () => _deleteChat(t),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
         color: Colors.transparent,
@@ -241,6 +244,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   const SizedBox(height: 5),
                   Row(
                     children: [
+                      // Mera aakhri message ho to tick dikhao
+                      if (t.lastSenderId == myUid) ...[
+                        _ticks(t.lastMessageStatus),
+                        const SizedBox(width: 4),
+                      ],
                       Expanded(
                         child: Text(
                             t.lastMessage.isEmpty
@@ -277,6 +285,54 @@ class _ChatListScreenState extends State<ChatListScreen> {
             end: const Offset(1, 1),
             delay: (70 * index).ms,
             duration: 450.ms);
+  }
+
+  /// List wali chhoti tick (mera aakhri message).
+  Widget _ticks(String status) {
+    if (status == 'seen') {
+      return const Icon(Icons.done_all, size: 15, color: AppColors.primaryPink);
+    }
+    if (status == 'delivered') {
+      return Icon(Icons.done_all,
+          size: 15, color: Colors.white.withValues(alpha: 0.6));
+    }
+    return Icon(Icons.done,
+        size: 15, color: Colors.white.withValues(alpha: 0.6));
+  }
+
+  /// Long-press: chat apni list se delete karo (doosre ko rehti hai).
+  Future<void> _deleteChat(ChatThread t) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title:
+            const Text('Delete chat?', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'This chat will be removed from your list. The other person will still see it.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child:
+                const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && mounted) {
+      await context.read<ChatProvider>().deleteChatForMe(t.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Chat deleted')),
+        );
+      }
+    }
   }
 
   /// Pulsing unread badge — cart badge jaisa.
