@@ -10,6 +10,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/product_card.dart';
 import '../../core/widgets/shimmer_box.dart';
+import '../notifications/notification_provider.dart';
 import 'home_provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -113,32 +114,98 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ---------- Greeting header (gradient title) ----------
+  // ---------- Greeting header (gradient title + bell) ----------
   Widget _header() {
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(_greeting,
-                style:
-                    AppTextStyles.caption.copyWith(color: AppColors.textMuted))
-            .animate()
-            .fadeIn(duration: 400.ms),
-        const SizedBox(height: 4),
-        ShaderMask(
-          shaderCallback: (bounds) =>
-              AppColors.primaryGradient.createShader(bounds),
-          child: Text(
-            'What are you looking for?',
-            style: AppTextStyles.heading.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: 28,
-              letterSpacing: -0.5,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_greeting,
+                      style: AppTextStyles.caption
+                          .copyWith(color: AppColors.textMuted))
+                  .animate()
+                  .fadeIn(duration: 400.ms),
+              const SizedBox(height: 4),
+              ShaderMask(
+                shaderCallback: (bounds) =>
+                    AppColors.primaryGradient.createShader(bounds),
+                child: Text(
+                  'What are you looking for?',
+                  style: AppTextStyles.heading.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 28,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ).animate().fadeIn(duration: 450.ms, delay: 80.ms).slideY(
+                  begin: -0.25,
+                  end: 0,
+                  duration: 450.ms,
+                  curve: Curves.easeOutCubic),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        _notificationBell(),
+      ],
+    );
+  }
+
+  // ---------- Notification bell (unread badge ke saath) ----------
+  Widget _notificationBell() {
+    return StreamBuilder<int>(
+      stream: context.read<NotificationProvider>().unreadCountStream(),
+      builder: (context, snap) {
+        final count = snap.data ?? 0;
+        return GestureDetector(
+          onTap: () => Navigator.pushNamed(context, AppRoutes.notifications),
+          child: Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.06),
+              border: Border.all(
+                  color: AppColors.primaryViolet.withValues(alpha: 0.3)),
+            ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                const Icon(Icons.notifications_outlined,
+                    color: Colors.white, size: 22),
+                if (count > 0)
+                  Positioned(
+                    right: 9,
+                    top: 9,
+                    child: Container(
+                      constraints:
+                          const BoxConstraints(minWidth: 17, minHeight: 17),
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        color: AppColors.accent,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        count > 99 ? '99+' : '$count',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
-        ).animate().fadeIn(duration: 450.ms, delay: 80.ms).slideY(
-            begin: -0.25, end: 0, duration: 450.ms, curve: Curves.easeOutCubic),
-      ],
+        );
+      },
     );
   }
 
