@@ -104,11 +104,13 @@ class ChatProvider extends ChangeNotifier {
   }
 
   // ---------- Chat dhundo, na mile to nayi banao ----------
+  // storeId: chat kis store ki hai (product detail se product.storeId bhejo).
   Future<String> getOrCreateChat({
     required String productId,
     required String productName,
     required String productImage,
     required String sellerId,
+    String storeId = '',
   }) async {
     final user = _auth.currentUser!;
     final uid = user.uid;
@@ -131,6 +133,7 @@ class ChatProvider extends ChangeNotifier {
       'customerId': uid,
       'customerName': name,
       'sellerId': sellerId,
+      'storeId': storeId, // chat kis store ki hai
       'productId': productId,
       'productName': productName,
       'productImage': productImage,

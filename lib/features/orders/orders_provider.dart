@@ -32,6 +32,23 @@ class OrdersProvider extends ChangeNotifier {
     });
   }
 
+  // Kisi store ke orders (seller ke liye — uske store ka dashboard).
+  // Single where + Dart sorting (composite index nahi chahiye).
+  Stream<List<Order>> storeOrdersStream(String storeId) {
+    if (storeId.isEmpty) return const Stream.empty();
+    return _db
+        .collection('orders')
+        .where('storeId', isEqualTo: storeId)
+        .snapshots()
+        .map((snap) {
+      final list = snap.docs.map((d) => Order.fromMap(d.data(), d.id)).toList();
+      list.sort((a, b) => (b.createdAt ??
+              DateTime.fromMillisecondsSinceEpoch(0))
+          .compareTo(a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0)));
+      return list;
+    });
+  }
+
   // Ek order ka live data (status change ho to screen khud update).
   Stream<Order?> orderStream(String orderId) {
     return _db

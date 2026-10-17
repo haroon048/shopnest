@@ -33,6 +33,7 @@ class AdminProductProvider extends ChangeNotifier {
     required String description,
     required String imageUrl,
     required String sellerId,
+    required String storeId,
   }) async {
     _saving = true;
     notifyListeners();
@@ -46,6 +47,7 @@ class AdminProductProvider extends ChangeNotifier {
         'description': description,
         'images': [imageUrl],
         'sellerId': sellerId,
+        'storeId': storeId,
         'isFlashDeal': false,
         'createdAt': FieldValue.serverTimestamp(),
       };

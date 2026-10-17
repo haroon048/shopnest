@@ -19,6 +19,7 @@ import 'features/checkout/checkout_provider.dart';
 import 'features/home/home_provider.dart';
 import 'features/orders/orders_provider.dart';
 import 'features/product/product_provider.dart';
+import 'features/store/store_provider.dart';
 import 'features/wishlist/wishlist_provider.dart';
 
 Future<void> main() async {
@@ -37,6 +38,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => HomeProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
+        ChangeNotifierProvider(create: (_) => StoreProvider()),
         ChangeNotifierProvider(create: (_) => AdminProductProvider()),
         ChangeNotifierProvider(create: (_) => AdminCategoryProvider()),
         ChangeNotifierProvider(create: (_) => AdminOrderProvider()),

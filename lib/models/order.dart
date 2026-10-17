@@ -33,6 +33,7 @@ class OrderItem {
 class Order {
   final String id;
   final String userId;
+  final String storeId; // order kis store ka hai
   final List<OrderItem> items;
   final double subtotal;
   final double deliveryFee;
@@ -46,6 +47,7 @@ class Order {
   Order({
     required this.id,
     required this.userId,
+    this.storeId = '',
     required this.items,
     required this.subtotal,
     required this.deliveryFee,
@@ -77,6 +79,7 @@ class Order {
     return Order(
       id: id,
       userId: map['userId'] ?? '',
+      storeId: map['storeId'] ?? '',
       items: (map['items'] as List? ?? [])
           .map((e) => OrderItem.fromMap(Map<String, dynamic>.from(e)))
           .toList(),

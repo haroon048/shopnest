@@ -6,7 +6,9 @@ import '../../core/routes/app_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../models/product.dart';
+import '../../models/store.dart';
 import '../home/home_provider.dart';
+import '../store/store_provider.dart';
 import '../wishlist/wishlist_provider.dart';
 
 // Premium shop: glass luxe cards + image category chips + sort bottom-sheet.
@@ -43,8 +45,16 @@ class _ShopScreenState extends State<ShopScreen> {
     super.dispose();
   }
 
-  List<Product> _filtered(List<Product> all) {
+  // Store + category + search + sort filter.
+  // Store select ho to sirf uske products (purane bina-storeId wale bhi,
+  // taake migration se pehle kuch gayab na ho).
+  List<Product> _filtered(List<Product> all, Store? selectedStore) {
     var list = all.toList();
+    if (selectedStore != null) {
+      list = list
+          .where((p) => p.storeId == selectedStore.id || p.storeId.isEmpty)
+          .toList();
+    }
     if (_catId != null) {
       list = list.where((p) => p.categoryId == _catId).toList();
     }
@@ -98,7 +108,8 @@ class _ShopScreenState extends State<ShopScreen> {
   @override
   Widget build(BuildContext context) {
     final home = context.watch<HomeProvider>();
-    final list = _filtered(home.products);
+    final selectedStore = context.watch<StoreProvider>().selectedStore;
+    final list = _filtered(home.products, selectedStore);
     final hasFilters = _query.isNotEmpty || _catId != null || _sort != 'all';
 
     return Scaffold(
@@ -110,18 +121,102 @@ class _ShopScreenState extends State<ShopScreen> {
             child: Column(
               children: [
                 _header(list.length),
+                _storeBanner(selectedStore),
                 _searchBar(),
                 _categoryChips(home),
                 _toolbar(list.length, hasFilters),
                 Expanded(
                   child: list.isEmpty
-                      ? _emptyState(hasFilters)
-                      : _grid(list, '$_catId|$_sort'),
+                      ? _emptyState(hasFilters, selectedStore)
+                      : _grid(list, '${selectedStore?.id}|$_catId|$_sort'),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ---------- Kis store me shopping ho rahi hai (banner) ----------
+  Widget _storeBanner(Store? store) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 2, 20, 10),
+      child: GestureDetector(
+        onTap: () => Navigator.pushNamed(context, AppRoutes.storePicker),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: AppColors.surface.withValues(alpha: 0.7),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          ),
+          child: Row(
+            children: [
+              // Store logo (image ho to image, warna initial)
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppColors.primaryGradient,
+                ),
+                alignment: Alignment.center,
+                child: store != null && store.logoUrl.isNotEmpty
+                    ? ClipOval(
+                        child: Image.network(
+                          store.logoUrl,
+                          width: 34,
+                          height: 34,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Text(
+                            store.initial,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      )
+                    : Text(
+                        store?.initial ?? 'S',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      store == null
+                          ? 'Browse all stores'
+                          : 'Shopping in: ${store.name}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      store == null ? 'Tap to choose a store' : store.category,
+                      style: AppTextStyles.caption,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right,
+                  color: AppColors.textMuted, size: 20),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -447,7 +542,7 @@ class _ShopScreenState extends State<ShopScreen> {
   }
 
   // ---------- Premium empty state ----------
-  Widget _emptyState(bool hasFilters) {
+  Widget _emptyState(bool hasFilters, Store? selectedStore) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -476,13 +571,19 @@ class _ShopScreenState extends State<ShopScreen> {
               duration: 1600.ms,
               curve: Curves.easeInOut),
           const SizedBox(height: 18),
-          const Text('No products found',
-              style: TextStyle(
+          Text(
+              selectedStore == null
+                  ? 'No products found'
+                  : 'No products in ${selectedStore.name} yet',
+              style: const TextStyle(
                   color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text('Try a different search or filter.',
+          Text(
+              selectedStore == null
+                  ? 'Try a different search or filter.'
+                  : 'This store has not added products yet.',
               style:
                   AppTextStyles.caption.copyWith(color: AppColors.textMuted)),
           if (hasFilters) ...[

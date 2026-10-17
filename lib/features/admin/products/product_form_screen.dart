@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:shopnest/features/store/store_provider.dart';
 
 import '../../../core/services/cloudinary_service.dart';
 import '../../../core/theme/app_colors.dart';
@@ -111,6 +112,18 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     }
 
     final sellerId = context.read<AuthProvider>().user!.uid;
+    // Product hamesha mere store ka hoga: edit me purana storeId rakho,
+    // naya product me mere store ka id lagao.
+    final myStoreId = context.read<StoreProvider>().myStore?.id ?? '';
+    final storeId = (widget.product?.storeId.isNotEmpty ?? false)
+        ? widget.product!.storeId
+        : myStoreId;
+    if (storeId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please create your store first.')),
+      );
+      return;
+    }
     final ok = await context.read<AdminProductProvider>().saveProduct(
           id: widget.product?.id,
           name: name,
@@ -121,6 +134,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           description: _desc.text.trim(),
           imageUrl: imageUrl,
           sellerId: sellerId,
+          storeId: storeId,
         );
     if (!mounted) return;
     if (ok) {

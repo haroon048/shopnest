@@ -99,6 +99,7 @@ class CartProvider extends ChangeNotifier {
         price: p.price,
         image: p.images.isNotEmpty ? p.images.first : '',
         qty: 1,
+        storeId: p.storeId, // item kis store ka hai (order isi se banta hai)
       ).toMap());
     }
     // Live listener khud nayi list utha lega — screen update ho jayegi

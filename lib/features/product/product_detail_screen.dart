@@ -523,6 +523,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         productName: p.name,
         productImage: p.images.isNotEmpty ? p.images.first : '',
         sellerId: p.sellerId,
+        storeId: p.storeId, // chat kis store ki hai
       );
       if (!mounted) return;
       Navigator.pushNamed(

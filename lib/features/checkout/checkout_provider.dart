@@ -102,8 +102,13 @@ class CheckoutProvider extends ChangeNotifier {
     try {
       final orderRef = _db.collection('orders').doc();
       final batch = _db.batch();
+      // Customer ek waqt me ek hi store se shopping karta hai,
+      // is liye order ka storeId pehle item se le lo.
+      final orderStoreId =
+          cart.items.isNotEmpty ? cart.items.first.storeId : '';
       batch.set(orderRef, {
         'userId': _uid,
+        'storeId': orderStoreId, // order kis store ka hai
         'items': cart.items
             .map((i) => {
                   'productId': i.productId,

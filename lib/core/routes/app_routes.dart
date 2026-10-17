@@ -4,6 +4,9 @@ import '../../features/auth/role_select_screen.dart';
 
 import '../../features/auth/forgot_password_screen.dart';
 import '../../features/auth/login_screen.dart';
+import '../../features/store/create_store_screen.dart';
+import '../../features/store/store_dashboard_screen.dart';
+import '../../features/store/store_picker_screen.dart';
 import '../../features/admin/admin_main_screen.dart';
 import '../../features/main/main_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
@@ -37,6 +40,9 @@ class AppRoutes {
   static const String orderDetail = '/order-detail';
   static const String chatDetail = '/chat-detail';
   static const String roleSelect = '/roleSelect';
+  static const String storePicker = '/store-picker';
+  static const String createStore = '/create-store';
+  static const String storeDashboard = '/store-dashboard';
 
   // Baaki routes Phase-wise add honge
 
@@ -91,6 +97,12 @@ class AppRoutes {
         );
       case roleSelect:
         return MaterialPageRoute(builder: (_) => const RoleSelectScreen());
+      case storePicker:
+        return MaterialPageRoute(builder: (_) => const StorePickerScreen());
+      case createStore:
+        return MaterialPageRoute(builder: (_) => const CreateStoreScreen());
+      case storeDashboard:
+        return MaterialPageRoute(builder: (_) => const StoreDashboardScreen());
       default:
         // Agar route na mile to splash par bhejo
         return MaterialPageRoute(builder: (_) => const SplashScreen());

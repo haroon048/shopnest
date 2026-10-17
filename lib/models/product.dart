@@ -9,6 +9,7 @@ class Product {
   final List<String> images;
   final String categoryId;
   final String sellerId;
+  final String storeId; // product kis store ka hai (multi-store)
   final int stock;
   final double rating;
   final int ratingCount;
@@ -24,6 +25,7 @@ class Product {
     required this.images,
     required this.categoryId,
     required this.sellerId,
+    this.storeId = '',
     required this.stock,
     required this.rating,
     required this.ratingCount,
@@ -41,6 +43,7 @@ class Product {
       images: List<String>.from(map['images'] ?? []),
       categoryId: map['categoryId'] ?? '',
       sellerId: map['sellerId'] ?? '',
+      storeId: map['storeId'] ?? '',
       stock: map['stock'] ?? 0,
       rating: (map['rating'] ?? 0).toDouble(),
       ratingCount: map['ratingCount'] ?? 0,
@@ -50,5 +53,24 @@ class Product {
           : null,
       description: map['description'] ?? '',
     );
+  }
+
+  // Product -> Firestore doc (naya product add karte waqt)
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'price': price,
+      'oldPrice': oldPrice,
+      'images': images,
+      'categoryId': categoryId,
+      'sellerId': sellerId,
+      'storeId': storeId,
+      'stock': stock,
+      'rating': rating,
+      'ratingCount': ratingCount,
+      'isFlashDeal': isFlashDeal,
+      'dealEndsAt': dealEndsAt != null ? Timestamp.fromDate(dealEndsAt!) : null,
+      'description': description,
+    };
   }
 }

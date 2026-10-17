@@ -1,20 +1,68 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import 'package:shopnest/features/store/create_store_screen.dart';
+import 'package:shopnest/features/store/store_provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../models/product.dart';
+
 import 'admin_product_provider.dart';
 import 'product_form_screen.dart';
 
-// Admin: products ki list + add/edit/delete
-class AdminProductsScreen extends StatelessWidget {
+// Admin: apne store ke products ki list + add/edit/delete
+// Sirf apne storeId wale products dikhte hain (purane bina-storeId
+// wale bhi dikhte hain taake migration se pehle kuch gayab na ho).
+class AdminProductsScreen extends StatefulWidget {
   const AdminProductsScreen({super.key});
 
   @override
+  State<AdminProductsScreen> createState() => _AdminProductsScreenState();
+}
+
+class _AdminProductsScreenState extends State<AdminProductsScreen> {
+  bool _loadingStore = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<StoreProvider>().loadMyStore();
+      if (mounted) setState(() => _loadingStore = false);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final storeProvider = context.watch<StoreProvider>();
     final admin = context.watch<AdminProductProvider>();
+
+    if (_loadingStore) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primaryViolet),
+        ),
+      );
+    }
+
+    final myStore = storeProvider.myStore;
+    if (myStore == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: Text('Products',
+              style: AppTextStyles.heading.copyWith(fontSize: 20)),
+        ),
+        body: _noStoreState(),
+      );
+    }
+
+    final myStoreId = myStore.id;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -68,7 +116,11 @@ class AdminProductsScreen extends StatelessWidget {
                       CircularProgressIndicator(color: AppColors.primaryViolet),
                 );
               }
-              final products = snap.data!;
+              // Sirf mere store ke products (purane bina-storeId wale bhi,
+              // taake migration se pehle kuch gayab na ho).
+              final products = snap.data!
+                  .where((p) => p.storeId == myStoreId || p.storeId.isEmpty)
+                  .toList();
               if (products.isEmpty) {
                 return Center(
                   child: Column(
@@ -128,6 +180,68 @@ class AdminProductsScreen extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  // Store abhi nahi bana to pehle banane ko kaho
+  Widget _noStoreState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppColors.primaryGradient,
+              ),
+              child:
+                  const Icon(Icons.storefront, size: 48, color: Colors.white),
+            ),
+            const SizedBox(height: 20),
+            Text('No store yet', style: AppTextStyles.subHeading),
+            const SizedBox(height: 8),
+            Text(
+              'Create your store first to manage products.',
+              style: AppTextStyles.body,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            GestureDetector(
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CreateStoreScreen()),
+                );
+                if (mounted) {
+                  setState(() => _loadingStore = true);
+                  await context.read<StoreProvider>().loadMyStore();
+                  if (mounted) setState(() => _loadingStore = false);
+                }
+              },
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 15, horizontal: 32),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: AppColors.primaryGradient,
+                ),
+                child: const Text(
+                  'Create My Store',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

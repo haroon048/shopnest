@@ -4,6 +4,7 @@ class CartItem {
   final double price;
   final String image;
   final int qty;
+  final String storeId; // item kis store ka hai (order isi se banta hai)
 
   const CartItem({
     required this.productId,
@@ -11,6 +12,7 @@ class CartItem {
     required this.price,
     required this.image,
     required this.qty,
+    this.storeId = '',
   });
 
   double get total => price * qty;
@@ -22,6 +24,7 @@ class CartItem {
       price: (map['price'] as num?)?.toDouble() ?? 0,
       image: map['image'] as String? ?? '',
       qty: (map['qty'] as num?)?.toInt() ?? 1,
+      storeId: map['storeId'] as String? ?? '',
     );
   }
 
@@ -30,5 +33,6 @@ class CartItem {
         'price': price,
         'image': image,
         'qty': qty,
+        'storeId': storeId,
       };
 }

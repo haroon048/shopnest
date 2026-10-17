@@ -45,6 +45,7 @@ class ChatThread {
   final String productImage;
   final String buyerId;
   final String sellerId;
+  final String storeId; // chat kis store ki hai
   final String lastMessage;
   final DateTime? lastMessageAt;
 
@@ -55,6 +56,7 @@ class ChatThread {
     required this.productImage,
     required this.buyerId,
     required this.sellerId,
+    this.storeId = '',
     required this.lastMessage,
     required this.lastMessageAt,
   });
@@ -67,6 +69,7 @@ class ChatThread {
       productImage: map['productImage'] ?? '',
       buyerId: map['buyerId'] ?? '',
       sellerId: map['sellerId'] ?? '',
+      storeId: map['storeId'] ?? '',
       lastMessage: map['lastMessage'] ?? '',
       lastMessageAt: (map['lastMessageAt'] as Timestamp?)?.toDate(),
     );
