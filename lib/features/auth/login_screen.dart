@@ -67,12 +67,21 @@ class _LoginScreenState extends State<LoginScreen> {
     FocusScope.of(context).unfocus();
     setState(() => _loading = true);
     try {
-      await context.read<AuthProvider>().signIn(
+      final ok = await context.read<AuthProvider>().signIn(
             _email.text.trim(),
             _pass.text.trim(),
             expectedRole: _role,
           );
       if (!mounted) return;
+      // FIX: fail hone par Home par mat jao — provider ka error dikhao
+      if (!ok) {
+        final msg = context.read<AuthProvider>().error ??
+            'Login failed. Please try again.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg)),
+        );
+        return;
+      }
       final isAdmin = context.read<AuthProvider>().isAdmin;
       Navigator.pushNamedAndRemoveUntil(
         context,
@@ -92,10 +101,21 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _googleSignIn() async {
     setState(() => _googleLoading = true);
     try {
-      await context.read<AuthProvider>().signInWithGoogle(
+      final ok = await context.read<AuthProvider>().signInWithGoogle(
             expectedRole: _role,
           );
       if (!mounted) return;
+      // FIX: cancel/fail hone par Home par mat jao — provider ka error dikhao
+      if (!ok) {
+        final msg = context.read<AuthProvider>().error;
+        // User ne popup cancel kiya to khamoshi se wapas (koi error nahi)
+        if (msg != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(msg)),
+          );
+        }
+        return;
+      }
       final isAdmin = context.read<AuthProvider>().isAdmin;
       Navigator.pushNamedAndRemoveUntil(
         context,

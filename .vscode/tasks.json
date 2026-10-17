@@ -45,6 +45,20 @@
 			"command": "git add .; git commit -m publish-shopnest; git branch -M main; git push -u origin main --force",
 			"isBackground": false,
 			"problemMatcher": []
+		},
+		{
+			"label": "Resolve README merge and publish",
+			"type": "shell",
+			"command": "git checkout --theirs README.md; git add README.md; git -c core.editor=true rebase --continue; git push -u origin main; git stash pop",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Complete README rebase",
+			"type": "shell",
+			"command": "git stash push -m temp-tasks -- .vscode/tasks.json; git -c core.editor=true rebase --continue; git push -u origin main; git stash pop",
+			"isBackground": false,
+			"problemMatcher": []
 		}
 	]
 }
