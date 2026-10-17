@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/address.dart';
 import '../cart/cart_provider.dart';
+import '../../core/services/notification_service.dart';
 
 // Checkout: address chunna, payment method, order place karna.
 class CheckoutProvider extends ChangeNotifier {
@@ -136,6 +137,21 @@ class CheckoutProvider extends ChangeNotifier {
         );
       }
       await batch.commit();
+      // Store owner ko notification (naya order aaya hai).
+      // cart.clearCart() se pehle — uske baad total 0 ho jayega.
+      if (orderStoreId.isNotEmpty) {
+        final storeDoc = await _db.collection('stores').doc(orderStoreId).get();
+        final ownerId = storeDoc.data()?['ownerId'] as String?;
+        if (ownerId != null && ownerId.isNotEmpty && ownerId != _uid) {
+          await NotificationService.createNotification(
+            userId: ownerId,
+            title: 'New order received',
+            body: 'You have a new order worth Rs ${cart.total.toInt()}.',
+            type: 'order',
+            refId: orderRef.id,
+          );
+        }
+      }
       await cart.clearCart(); // order ban gaya, cart khaali karo
       return orderRef.id;
     } finally {

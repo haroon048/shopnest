@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart' hide Order;
 import 'package:flutter/material.dart';
+import 'package:shopnest/core/services/notification_service.dart';
 
 import '../../../models/order.dart';
 
@@ -46,6 +47,18 @@ class AdminOrderProvider extends ChangeNotifier {
       await _db.collection('orders').doc(orderId).update({
         'status': newStatus,
       });
+      // Customer ko notification (order ka status badla hai)
+      final doc = await _db.collection('orders').doc(orderId).get();
+      final customerId = doc.data()?['userId'] as String?;
+      if (customerId != null && customerId.isNotEmpty) {
+        await NotificationService.createNotification(
+          userId: customerId,
+          title: 'Order Update',
+          body: 'Your order is now $newStatus.',
+          type: 'order',
+          refId: orderId,
+        );
+      }
       return null;
     } catch (e) {
       return 'Failed to update status: $e';

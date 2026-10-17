@@ -16,6 +16,7 @@ import '../../features/splash/splash_screen.dart';
 import '../../features/wishlist/wishlist_screen.dart';
 import '../../features/checkout/checkout_screen.dart';
 import '../../features/checkout/order_success_screen.dart';
+import '../../features/notifications/notifications_screen.dart';
 import '../../features/orders/order_detail_screen.dart';
 import '../../features/orders/orders_screen.dart';
 import '../../features/chat/chat_detail_screen.dart';
@@ -43,6 +44,7 @@ class AppRoutes {
   static const String storePicker = '/store-picker';
   static const String createStore = '/create-store';
   static const String storeDashboard = '/store-dashboard';
+  static const String notifications = '/notifications';
 
   // Baaki routes Phase-wise add honge
 
@@ -103,6 +105,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const CreateStoreScreen());
       case storeDashboard:
         return MaterialPageRoute(builder: (_) => const StoreDashboardScreen());
+      case notifications:
+        return MaterialPageRoute(builder: (_) => const NotificationsScreen());
       default:
         // Agar route na mile to splash par bhejo
         return MaterialPageRoute(builder: (_) => const SplashScreen());

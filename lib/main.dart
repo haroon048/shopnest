@@ -17,6 +17,7 @@ import 'features/cart/cart_provider.dart';
 import 'features/chat/chat_provider.dart';
 import 'features/checkout/checkout_provider.dart';
 import 'features/home/home_provider.dart';
+import 'features/notifications/notification_provider.dart';
 import 'features/orders/orders_provider.dart';
 import 'features/product/product_provider.dart';
 import 'features/store/store_provider.dart';
@@ -51,6 +52,10 @@ Future<void> main() async {
         ChangeNotifierProxyProvider<AuthProvider, OrdersProvider>(
           create: (_) => OrdersProvider(),
           update: (_, auth, orders) => orders!..setUser(auth.user?.uid),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, NotificationProvider>(
+          create: (_) => NotificationProvider(),
+          update: (_, auth, notif) => notif!..setUser(auth.user?.uid),
         ),
         ChangeNotifierProxyProvider<AuthProvider, ChatProvider>(
           create: (_) => ChatProvider(),
